@@ -1,0 +1,19 @@
+{
+  "query": "which counties have laws about dogs?",
+  "filters": {
+    "locations": [
+      {
+        "state": "ca",
+        "county": ["alameda-county", "butte-county", "calaveras-county"]
+      },
+      {
+        "state": "ga",
+        "county": ["fulton-county"]
+      },
+      {
+        "state": "fl",
+        "county": ["alachua-county"]
+      }
+    ]
+  }
+}

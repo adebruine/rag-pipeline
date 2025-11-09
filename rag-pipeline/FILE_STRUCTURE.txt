@@ -1,0 +1,135 @@
+╔══════════════════════════════════════════════════════════════╗
+║          RAG PIPELINE - COMPLETE FILE STRUCTURE              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📂 Project Root
+│
+├── 🐍 CORE PYTHON FILES (8 files)
+│   ├── config.py              ⚙️  Configuration & environment
+│   ├── models.py              🤖 LLM & reranker loading
+│   ├── filters.py             🔍 Filter processing
+│   ├── retrieval.py           📊 Pinecone queries
+│   ├── llm_generation.py      💬 Response generation
+│   ├── utils.py               🛠️  CSV & utilities
+│   ├── pipeline.py            🔗 Pipeline orchestration
+│   └── main.py                🚀 Entry point (CLI)
+│
+├── 🐳 DOCKER FILES (6 files)
+│   ├── Dockerfile             📦 Container definition
+│   ├── docker-compose.yml     🎛️  Orchestration config
+│   ├── .dockerignore          🚫 Build exclusions
+│   ├── .env.example           🔑 Env template
+│   ├── build.sh              🔨 Build automation
+│   └── run.sh                 ▶️  Run automation
+│
+├── 📚 DOCUMENTATION (5 files)
+│   ├── README.md              📖 Main documentation
+│   ├── QUICKSTART.md          ⚡ 5-min deployment
+│   ├── EC2_SETUP.md           ☁️  Detailed EC2 guide
+│   ├── DEPLOYMENT_CHECKLIST.md ✅ Step tracker
+│   └── PROJECT_SUMMARY.md     📋 Overview
+│
+└── ⚙️  CONFIGURATION (3 files)
+    ├── requirements.txt       📦 Dependencies
+    ├── example_query.json     📝 Query example
+    └── .gitignore            🙈 Git exclusions
+
+╔══════════════════════════════════════════════════════════════╗
+║                      QUICK REFERENCE                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+🚀 GET STARTED:
+   1. Read QUICKSTART.md (5 minutes)
+   2. Follow DEPLOYMENT_CHECKLIST.md
+   3. Deploy to EC2
+
+📖 FULL DOCS:
+   • README.md - Complete reference
+   • EC2_SETUP.md - Detailed setup
+   • PROJECT_SUMMARY.md - Architecture overview
+
+🐳 DOCKER COMMANDS:
+   • ./build.sh - Build image
+   • ./run.sh - Run container
+   • docker compose up -d - Run in background
+
+💻 PYTHON COMMANDS:
+   • python main.py --mode baseline --example
+   • python main.py --mode hybrid --json query.json
+
+╔══════════════════════════════════════════════════════════════╗
+║                         FEATURES                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Production-ready Docker container
+✅ GPU-optimized (4-bit quantization)
+✅ Two search modes (Baseline + Hybrid)
+✅ Flexible filtering (10+ filter types)
+✅ CSV export for integration
+✅ EC2 deployment ready
+✅ Comprehensive documentation
+✅ Cost-optimized
+
+╔══════════════════════════════════════════════════════════════╗
+║                    DEPLOYMENT FLOW                           ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────┐
+│ 1. Clone    │ git clone <repo>
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│ 2. Config   │ cp .env.example .env
+└──────┬──────┘ nano .env
+       │
+┌──────▼──────┐
+│ 3. Build    │ ./build.sh
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│ 4. Run      │ ./run.sh
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│ 5. Query    │ outputs/*.csv
+└─────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║                     COST ESTIMATE                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+EC2 g4dn.xlarge (recommended):
+  • ~$0.526/hour
+  • ~$12.62/day (if 24/7)
+  • ~$126/month (8 hrs/day)
+
+💡 TIP: Use Spot Instances for 60-70% savings!
+
+╔══════════════════════════════════════════════════════════════╗
+║                    SYSTEM REQUIREMENTS                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+Minimum:
+  • GPU: NVIDIA T4 (16GB VRAM)
+  • RAM: 16GB
+  • Storage: 100GB
+  • Instance: g4dn.xlarge
+
+Recommended:
+  • GPU: NVIDIA A10G (24GB VRAM)
+  • RAM: 32GB
+  • Storage: 150GB
+  • Instance: g5.xlarge
+
+╔══════════════════════════════════════════════════════════════╗
+║                         SUPPORT                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📧 Contact your development team
+📖 Check EC2_SETUP.md troubleshooting
+🔍 Review container logs: docker compose logs -f
+🖥️  Monitor GPU: nvidia-smi
+
+═══════════════════════════════════════════════════════════════
+                    Ready to Deploy! 🚀
+═══════════════════════════════════════════════════════════════

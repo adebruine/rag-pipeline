@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  rag-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-pipeline
+    
+    # GPU support - requires NVIDIA Docker runtime
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Environment variables - load from .env file
+    env_file:
+      - .env
+    
+    # Mount volumes for outputs and custom queries
+    volumes:
+      - ./outputs:/app/outputs
+      - ./queries:/app/queries:ro
+    
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Override default command if needed
+    # command: python3 main.py --mode hybrid --json queries/custom_query.json
