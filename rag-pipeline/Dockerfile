@@ -46,5 +46,5 @@ ENV PINECONE_API_KEY="" \
     HF_TOKEN=""
 
 # Run the application
-# Default to hybrid mode with example query
-CMD ["python3", "main.py", "--mode", "hybrid", "--example"]
+EXPOSE 8000
+CMD ["python3", "api.py"]
