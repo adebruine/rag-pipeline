@@ -1,6 +1,6 @@
 # Deployment Checklist
 
-Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
+Use this checklist to ensure successful deployment of the RAG Query Flask API on EC2.
 
 ## Pre-Deployment
 
@@ -26,6 +26,7 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
   - [ ] Used Deep Learning AMI or Ubuntu 22.04
   - [ ] Allocated 100+ GB storage
   - [ ] Security group allows SSH from your IP
+  - [ ] **Security group allows port 8000 (Flask API)**
   - [ ] Instance is running
 
 - [ ] **Connect to Instance**
@@ -54,7 +55,7 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
 
 - [ ] **Get Code on EC2**
   - [ ] Repository cloned OR files transferred
-  - [ ] In project directory
+  - [ ] Navigate to: `cd your-repo/rag-query`
   - [ ] All files present (run `ls -la`)
 
 - [ ] **Configure Environment**
@@ -78,39 +79,42 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
 
 ## Verification
 
-- [ ] **Test Queries**
-  - [ ] Example query runs successfully
-  - [ ] CSV file generated in `outputs/` directory
-  - [ ] LLM response displayed
+- [ ] **Test Flask API**
+  - [ ] Health check works: `curl http://localhost:8000/health`
+  - [ ] Test query returns JSON response
+  - [ ] Response contains `response` and `chunks` fields
   - [ ] No error messages
+  - [ ] Can access from remote: `curl http://<EC2_IP>:8000/health`
 
 - [ ] **Check GPU Usage**
   - [ ] Run `nvidia-smi` - GPU memory in use
   - [ ] GPU utilization > 0%
 
-- [ ] **Review Outputs**
-  - [ ] CSV files contain expected columns
-  - [ ] Chunk text is readable
-  - [ ] Scores make sense
+- [ ] **Review API Response**
+  - [ ] JSON contains chunk data with all fields
+  - [ ] LLM response is coherent
+  - [ ] Scores are reasonable (0-1 range)
 
-## Custom Queries
+## Integration Testing
 
-- [ ] **Create Query Files**
-  - [ ] `queries/` directory created
-  - [ ] Custom JSON query files added
-  - [ ] Query format validated
+- [ ] **API Integration**
+  - [ ] Can query API from Streamlit/frontend
+  - [ ] JSON response properly parsed
+  - [ ] Chunks array converts to DataFrame/CSV on frontend
+  - [ ] Mode parameter works (baseline/hybrid)
 
-- [ ] **Run Custom Queries**
-  - [ ] Can run with `--json` flag
-  - [ ] Results match expectations
-  - [ ] CSV outputs correct
+- [ ] **CLI Mode (Optional)**
+  - [ ] CLI still works for testing: `python main.py --example`
+  - [ ] Useful for debugging
 
 ## Production Readiness
 
 - [ ] **Security**
   - [ ] Security group restricts SSH to known IPs
+  - [ ] Port 8000 restricted to frontend IP (or VPC)
   - [ ] `.env` not committed to Git
   - [ ] API keys rotated if needed
+  - [ ] Consider adding API authentication
 
 - [ ] **Monitoring**
   - [ ] CloudWatch alarms set up (optional)
@@ -118,9 +122,9 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
   - [ ] Log monitoring in place
 
 - [ ] **Backup**
-  - [ ] Important outputs backed up
   - [ ] `.env` backed up securely
   - [ ] Configuration documented
+  - [ ] Frontend connection details documented
 
 - [ ] **Documentation**
   - [ ] Team knows how to access instance
@@ -139,10 +143,11 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
   - [ ] Automated builds
   - [ ] Automated deployment
 
-- [ ] **API Endpoint**
-  - [ ] REST API added for Streamlit
-  - [ ] Security group allows API port
-  - [ ] API tested
+- [ ] **Streamlit Frontend Integration**
+  - [ ] Flask API accessible from frontend
+  - [ ] Security group allows API port 8000
+  - [ ] End-to-end query flow tested
+  - [ ] CSV conversion working on frontend
 
 - [ ] **Scaling**
   - [ ] ECS/Kubernetes considered for scale
@@ -166,9 +171,10 @@ Use this checklist to ensure successful deployment of the RAG pipeline on EC2.
 ## Troubleshooting Reference
 
 If you encounter issues, refer to:
-1. **QUICKSTART.md** - Common issues and quick fixes
-2. **EC2_SETUP.md** - Detailed troubleshooting section
-3. **README.md** - Full documentation
+1. **[QUICKSTART.md](QUICKSTART.md)** - Common issues and quick fixes
+2. **[EC2_SETUP.md](EC2_SETUP.md)** - Detailed troubleshooting section
+3. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Architecture overview
+4. **[../README.md](../README.md)** - Full documentation
 
 ---
 

@@ -1,4 +1,4 @@
-# RAG Pipeline - Project Summary
+# RAG Query - Project Summary
 
 ## 🎯 What You Have
 
@@ -6,43 +6,47 @@ A **production-ready, Docker-containerized RAG pipeline** for legal document ret
 
 ---
 
-## 📦 Complete File List (18 files)
+## 📦 Complete File List
 
-### Core Python Files (8)
+**All files located in**: `rag-query/` directory
+
+### Core Python Files (9)
 ```
-✓ config.py              - Configuration & environment variables
-✓ models.py              - LLM & reranker initialization  
-✓ filters.py             - Filter processing utilities
-✓ retrieval.py           - Pinecone retrieval (baseline & hybrid)
-✓ llm_generation.py      - LLM response generation
-✓ utils.py               - CSV export & printing utilities
-✓ pipeline.py            - Main pipeline orchestration
-✓ main.py                - Entry point with CLI
+✓ rag-query/api.py               - Flask REST API (returns JSON to frontend)
+✓ rag-query/config.py            - Configuration & environment variables
+✓ rag-query/models.py            - LLM & reranker initialization
+✓ rag-query/filters.py           - Filter processing utilities
+✓ rag-query/retrieval.py         - Pinecone retrieval (baseline & hybrid)
+✓ rag-query/llm_generation.py    - LLM response generation
+✓ rag-query/utils.py             - Utility functions
+✓ rag-query/pipeline.py          - Main pipeline orchestration
+✓ rag-query/main.py              - CLI entry point
 ```
 
 ### Docker Files (6)
 ```
-✓ Dockerfile             - Container image definition
-✓ docker-compose.yml     - Container orchestration
-✓ .dockerignore          - Build optimization
-✓ build.sh               - Build automation script
-✓ run.sh                 - Run automation script  
-✓ .env.example           - Environment template
+✓ rag-query/Dockerfile             - Container image definition
+✓ rag-query/docker-compose.yml     - Container orchestration
+✓ rag-query/.dockerignore          - Build optimization
+✓ rag-query/build.sh               - Build automation script
+✓ rag-query/run.sh                 - Run automation script
+✓ rag-query/.env.example           - Environment template
 ```
 
-### Documentation (4)
+### Documentation (5)
 ```
-✓ README.md                    - Complete documentation
-✓ EC2_SETUP.md                 - Detailed EC2 guide
-✓ QUICKSTART.md                - 5-minute deployment
-✓ DEPLOYMENT_CHECKLIST.md      - Step-by-step checklist
+✓ rag-query/README.md                    - Complete documentation
+✓ rag-query/EC2_SETUP.md                 - Detailed EC2 guide
+✓ rag-query/QUICKSTART.md                - 5-minute deployment
+✓ rag-query/DEPLOYMENT_CHECKLIST.md      - Step-by-step checklist
+✓ rag-query/PROJECT_SUMMARY.md           - This file
 ```
 
 ### Configuration Files (3)
 ```
-✓ requirements.txt       - Python dependencies
-✓ example_query.json     - Example query format
-✓ .gitignore            - Git exclusions
+✓ rag-query/requirements.txt       - Python dependencies
+✓ rag-query/example_query.json     - Example query format
+✓ rag-query/.gitignore             - Git exclusions
 ```
 
 ---
@@ -100,80 +104,112 @@ A **production-ready, Docker-containerized RAG pipeline** for legal document ret
 2. Clone on EC2
    │
    ▼
-3. Set .env Variables
+3. Navigate to rag-query/
    │
    ▼
-4. Build Docker Image (./build.sh)
+4. Set .env Variables
    │
    ▼
-5. Run Container (./run.sh)
+5. Build Docker Image (./build.sh)
    │
    ▼
-6. Models Download (First run only)
+6. Run Container (./run.sh or docker compose up)
    │
    ▼
-7. Pipeline Ready! ✓
+7. Models Download (First run only - ~16GB)
+   │
+   ▼
+8. Flask API Ready on port 8000! ✓
+   │
+   ▼
+9. Test: curl http://localhost:8000/health
 ```
 
 ---
 
 ## 🎮 Usage Modes
 
-### Mode 1: Baseline Search (Dense Embedding Only)
+### API Mode (Recommended - Returns JSON)
 ```bash
-docker compose up
-# or
+cd rag-query
+
+# Start the Flask API server
+docker compose up -d
+
+# Query via API (returns JSON)
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are dog walking regulations?",
+    "filters": {
+      "locations": [{"state": "ca", "county": ["alameda-county"]}]
+    },
+    "mode": "hybrid"
+  }'
+```
+**Output**: JSON response with `response` and `chunks` fields
+
+### CLI Mode (For Testing - Can save to CSV)
+```bash
+cd rag-query
+
+# Baseline search
 python main.py --mode baseline --example
-```
-**Output**: `baseline_retrieval_output.csv`
 
-### Mode 2: Hybrid Search (Dense + Sparse + Reranking)
-```bash
-docker run --gpus all --env-file .env \
-  -v $(pwd)/outputs:/app/outputs \
-  rag-pipeline:latest \
-  python3 main.py --mode hybrid --example
-```
-**Output**: `hybrid_retrieval_output.csv`
+# Hybrid search
+python main.py --mode hybrid --example
 
-### Mode 3: Filter-Only Search
-```bash
-# Set query to empty string in JSON
+# Filter-only search
 python main.py --mode hybrid --json queries/filter_only.json
 ```
-**Output**: `hybrid_filter_only_output.csv`
+**Note**: CLI mode can generate CSV files if enabled in pipeline.py (currently disabled)
 
 ---
 
 ## 📊 Input/Output
 
-### Input
+### API Input (POST /query)
 ```json
 {
   "query": "Are dogs allowed in public parks?",
   "filters": {
     "locations": [
-      {"state": "ca", "county": ["alameda-county"]}
+      {"state": "ca", "county": ["alameda-county"]}]
     ],
     "penalty": "Y"
-  }
+  },
+  "mode": "hybrid"
 }
 ```
 
-### Output (CSV)
-| Column | Description |
-|--------|-------------|
-| id | Document ID |
-| score | Similarity score |
-| rerank_score | Reranker score (hybrid mode) |
-| state | State code |
-| county | County name |
-| section | Legal section reference |
-| chunk_text | Full text of law snippet |
-| penalty, obligation, etc. | Binary tags |
-| fk_grade, fre, wc | Readability metrics |
+### API Output (JSON)
+```json
+{
+  "response": "Based on the retrieved legal documents, dogs are allowed in public parks in Alameda County with the following restrictions...",
+  "chunks": [
+    {
+      "id": "chunk_123",
+      "score": 0.856,
+      "rerank_score": 0.923,
+      "state": "ca",
+      "county": "alameda-county",
+      "section": "Chapter 6.04.010",
+      "chunk_text": "Full legal text of the regulation...",
+      "penalty": "Y",
+      "obligation": "Y",
+      "permission": "N",
+      "prohibition": "Y",
+      "fk_grade": 12.5,
+      "fre": 45.2,
+      "wc": 250,
+      "pct_complex": 35.8
+    }
+  ],
+  "mode": "hybrid"
+}
+```
 
-**Plus**: LLM-generated natural language summary
+**Frontend can convert `chunks` array to CSV/DataFrame for display and download**
 
 ---
 
@@ -198,14 +234,15 @@ python main.py --mode hybrid --json queries/filter_only.json
 
 ## 🔧 Key Features
 
+- ✅ **REST API**: Flask API returns JSON for easy frontend integration
+- ✅ **Dual Pipeline**: Baseline and Hybrid modes initialized once
 - ✅ **Modular Design**: Easy to modify and extend
 - ✅ **Docker-First**: Consistent environment everywhere
 - ✅ **GPU Optimized**: 4-bit quantization for efficiency
 - ✅ **Production Ready**: Error handling, logging, validation
 - ✅ **Flexible Filtering**: 10+ filter types supported
-- ✅ **CSV Export**: Ready for Streamlit or other frontends
+- ✅ **JSON Response**: Returns LLM response + structured chunk data
 - ✅ **Two Search Modes**: Baseline and Hybrid with reranking
-- ✅ **Batch Processing**: Process multiple queries in queue
 - ✅ **Easy Deployment**: One command build and run
 
 ---
@@ -222,32 +259,74 @@ python main.py --mode hybrid --json queries/filter_only.json
 
 ## 🔌 Integration with Streamlit
 
-Your pipeline outputs CSV files that can be directly consumed by Streamlit:
+Your pipeline exposes a Flask REST API that returns JSON data for frontend consumption:
 
 ```python
 # In your Streamlit app
-import subprocess
+import requests
 import pandas as pd
+import streamlit as st
 
-def run_rag_query(query, filters):
-    # Option 1: Call via API (TODO: add API layer)
-    # Option 2: Run Docker container
-    subprocess.run([
-        "docker", "run", "--gpus", "all",
-        "--env-file", ".env",
-        "-v", "$(pwd)/outputs:/app/outputs",
-        "rag-pipeline:latest",
-        "python3", "main.py", "--mode", "hybrid",
-        "--query", query
-    ])
-    
-    # Read results
-    df = pd.read_csv("outputs/hybrid_retrieval_output.csv")
-    return df
+# API endpoint (EC2 public IP or localhost)
+API_URL = "http://your-ec2-ip:8000"
 
-# In Streamlit
-df = run_rag_query(user_query, user_filters)
-st.dataframe(df)
+def run_rag_query(query, filters, mode="hybrid"):
+    """Call RAG API and return results."""
+    response = requests.post(
+        f"{API_URL}/query",
+        json={
+            "query": query,
+            "filters": filters,
+            "mode": mode
+        },
+        timeout=300
+    )
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error: {response.status_code}")
+        return None
+
+# In Streamlit UI
+query = st.text_input("Enter your query")
+mode = st.radio("Mode", ["hybrid", "baseline"])
+
+if st.button("Search"):
+    result = run_rag_query(query, {}, mode=mode)
+
+    if result:
+        # Display LLM response
+        st.subheader("AI Response")
+        st.write(result["response"])
+
+        # Display retrieved chunks as dataframe
+        st.subheader("Retrieved Documents")
+        df = pd.DataFrame(result["chunks"])
+        st.dataframe(df)
+
+        # Download as CSV (client-side conversion)
+        csv = df.to_csv(index=False)
+        st.download_button("Download CSV", csv, "results.csv")
+```
+
+**API Response Format:**
+```json
+{
+  "response": "LLM-generated answer...",
+  "chunks": [
+    {
+      "id": "chunk_123",
+      "score": 0.85,
+      "rerank_score": 0.92,
+      "state": "ca",
+      "county": "alameda-county",
+      "chunk_text": "Full legal text...",
+      ...
+    }
+  ],
+  "mode": "hybrid"
+}
 ```
 
 ---

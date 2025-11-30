@@ -1,6 +1,6 @@
 # Quick Start Guide - Docker Deployment on EC2
 
-This is the **fastest way** to get your RAG pipeline running on AWS EC2.
+This is the **fastest way** to get your RAG Query API running on AWS EC2.
 
 ## 🚀 5-Minute Deployment
 
@@ -11,7 +11,8 @@ This is the **fastest way** to get your RAG pipeline running on AWS EC2.
 3. Select: **Deep Learning AMI GPU PyTorch (Ubuntu 22.04)**
 4. Choose: **g4dn.xlarge** (or larger)
 5. Storage: **100 GB**
-6. Launch and download your `.pem` key
+6. **Security Group**: Allow inbound on port **8000** (for Flask API)
+7. Launch and download your `.pem` key
 
 ### Step 2: Connect & Setup (2 min)
 
@@ -38,18 +39,32 @@ sudo apt-get install -y docker-compose-plugin
 ```bash
 # Clone your repo
 git clone https://github.com/your-username/your-repo.git
-cd your-repo
+cd your-repo/rag-query
 
 # Set up environment
 cp .env.example .env
 nano .env  # Add: PINECONE_API_KEY=xxx and HF_TOKEN=xxx
 # Save: Ctrl+X, Y, Enter
 
-# Build and run
+# Build and run Flask API
 ./build.sh && ./run.sh
+# or
+docker compose up -d
 ```
 
-**That's it!** Your pipeline is now running. 🎉
+### Step 4: Test the API
+
+```bash
+# Check health
+curl http://localhost:8000/health
+
+# Test query
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are dog regulations?", "filters": {}, "mode": "hybrid"}'
+```
+
+**That's it!** Your Flask API is now running on port 8000! 🎉
 
 ---
 
@@ -68,7 +83,7 @@ nano .env  # Add: PINECONE_API_KEY=xxx and HF_TOKEN=xxx
 # Check if GPU is accessible
 docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
 
-# Run in background
+# Start Flask API in background
 docker compose up -d
 
 # View logs
@@ -77,15 +92,19 @@ docker compose logs -f
 # Stop container
 docker compose down
 
-# Run custom query
-docker run --gpus all --env-file .env \
-  -v $(pwd)/outputs:/app/outputs \
-  -v $(pwd)/queries:/app/queries:ro \
-  rag-pipeline:latest \
-  python3 main.py --mode hybrid --json queries/my_query.json
+# Query the API (from EC2 or remote)
+curl -X POST http://<EC2_PUBLIC_IP>:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Your question here",
+    "filters": {"locations": [{"state": "ca", "county": ["alameda-county"]}]},
+    "mode": "hybrid"
+  }'
 
-# Access outputs
-ls outputs/
+# CLI mode (for testing)
+docker run --gpus all --env-file .env \
+  rag-pipeline:latest \
+  python3 main.py --mode hybrid --example
 ```
 
 ---
@@ -128,27 +147,38 @@ chmod +x build.sh run.sh
 
 ## 📁 Getting Your Results
 
-### Download CSV files to your local machine:
+### API returns JSON:
 ```bash
-# From your local terminal (not EC2)
-scp -i your-key.pem ubuntu@<EC2_IP>:~/your-repo/outputs/*.csv ./
+# Query from your local machine
+curl -X POST http://<EC2_PUBLIC_IP>:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "dog laws", "filters": {}, "mode": "hybrid"}' \
+  | jq '.'  # Pretty print JSON
 ```
 
-### Or view on EC2:
-```bash
-cd outputs/
-ls -lh
-cat baseline_retrieval_output.csv | head
+### Response format:
+```json
+{
+  "response": "LLM-generated answer...",
+  "chunks": [
+    {"id": "...", "score": 0.85, "chunk_text": "..."},
+    ...
+  ],
+  "mode": "hybrid"
+}
 ```
+
+**Frontend apps** (like Streamlit) can convert the `chunks` array to CSV/DataFrame for display and download.
 
 ---
 
 ## 🎓 Next Steps
 
 - Read **[EC2_SETUP.md](EC2_SETUP.md)** for detailed instructions
-- Read **[README.md](README.md)** for all features and configuration
+- Read **[../README.md](../README.md)** for all features and configuration
+- Read **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** for architecture overview
 - Modify `config.py` to customize behavior
-- Create custom query files in `queries/` directory
+- Connect your Streamlit frontend to the API
 
 ---
 

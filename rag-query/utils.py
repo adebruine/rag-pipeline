@@ -43,7 +43,6 @@ def print_chunks(retrieved_chunks: List[dict]) -> None:
         df['preview'] = df['text'].str.slice(0, 30) + '...'
     if 'section' in df.columns and len(df) > 0:
         df['section'] = df['section'].str.slice(0, 20) + '...'
-    df['section'] = df['section'].str.slice(0, 20) + '...'
 
     output_df = df[[
         'score', 'county', 'section', 'preview', 

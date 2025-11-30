@@ -57,19 +57,19 @@ class RAGPipeline:
         print("="*50 + "\n")
     
     def run_baseline_search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         filters: Dict[str, Any]
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, list]:
         """
         Run baseline search (dense embedding only).
-        
+
         Args:
             query: Query string (empty for filter-only search)
             filters: Filter dictionary with locations and other criteria
-            
+
         Returns:
-            Tuple of (llm_output, csv_filename)
+            Tuple of (llm_output, retrieved_chunks)
         """
         print("\n" + "="*50)
         print("RUNNING BASELINE SEARCH")
@@ -114,19 +114,19 @@ class RAGPipeline:
         return llm_output, retrieved_chunks
     
     def run_hybrid_search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         filters: Dict[str, Any]
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, list]:
         """
         Run hybrid search with reranking (dense + sparse embeddings).
-        
+
         Args:
             query: Query string (empty for filter-only search)
             filters: Filter dictionary with locations and other criteria
-            
+
         Returns:
-            Tuple of (llm_output, csv_filename)
+            Tuple of (llm_output, retrieved_chunks)
         """
         if not self.use_reranking:
             raise ValueError("Pipeline was not initialized with reranking enabled")
@@ -175,19 +175,19 @@ class RAGPipeline:
         return llm_output, retrieved_chunks
     
     def run(
-        self, 
-        query: str, 
+        self,
+        query: str,
         filters: Dict[str, Any]
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, list]:
         """
         Run the appropriate search based on pipeline configuration.
-        
+
         Args:
             query: Query string (empty for filter-only search)
             filters: Filter dictionary with locations and other criteria
-            
+
         Returns:
-            Tuple of (llm_output, csv_filename)
+            Tuple of (llm_output, retrieved_chunks)
         """
         if self.use_reranking:
             return self.run_hybrid_search(query, filters)

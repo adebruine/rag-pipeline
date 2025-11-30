@@ -1,6 +1,6 @@
-# EC2 Deployment Guide for RAG Pipeline Docker Container
+# EC2 Deployment Guide for RAG Query API
 
-This guide will help you deploy the RAG pipeline as a Docker container on AWS EC2 with GPU support.
+This guide will help you deploy the RAG Query Flask API as a Docker container on AWS EC2 with GPU support.
 
 ## Prerequisites
 
@@ -28,9 +28,9 @@ This guide will help you deploy the RAG pipeline as a Docker container on AWS EC
    - Or use: Ubuntu Server 22.04 LTS with NVIDIA drivers
 2. **Instance Type**: g4dn.xlarge (minimum recommended)
 3. **Storage**: 100 GB GP3 (for model downloads)
-4. **Security Group**: 
+4. **Security Group**:
    - SSH (22) from your IP
-   - Custom ports if exposing API (optional)
+   - **HTTP (8000) for Flask API** - Allow from your frontend IP or 0.0.0.0/0
 
 ## Step 2: Connect to EC2
 
@@ -95,10 +95,10 @@ docker compose version
 ```bash
 # Clone from GitHub
 git clone https://github.com/your-username/your-repo.git
-cd your-repo
+cd your-repo/rag-query
 
 # Or upload files directly
-# scp -i your-key.pem -r ./rag-pipeline ubuntu@<EC2_IP>:~/
+# scp -i your-key.pem -r ./rag-query ubuntu@<EC2_IP>:~/
 ```
 
 ## Step 5: Configure Environment Variables
@@ -131,7 +131,7 @@ docker build -t rag-pipeline:latest .
 
 **Note**: First build will take 10-15 minutes as it downloads all dependencies.
 
-## Step 7: Run the Container
+## Step 7: Run the Flask API Container
 
 ### Option A: Using Docker Compose (Recommended)
 
@@ -149,68 +149,77 @@ docker compose logs -f
 docker compose down
 ```
 
-### Option B: Using Docker Run
+### Option B: Using Docker Run (Manual)
 
 ```bash
-docker run --gpus all \
+docker run -d --gpus all \
   --env-file .env \
-  -v $(pwd)/outputs:/app/outputs \
-  -v $(pwd)/queries:/app/queries:ro \
-  --name rag-pipeline \
-  --rm \
+  -p 8000:8000 \
+  --name rag-api \
   rag-pipeline:latest
 ```
 
-## Step 8: Run Custom Queries
+## Step 8: Test the API
 
-### Using JSON Files
-
-1. Create a query file in the `queries/` directory:
+### Health Check
 
 ```bash
-mkdir -p queries
-cat > queries/my_query.json << EOF
+# From EC2
+curl http://localhost:8000/health
+
+# From your local machine
+curl http://<EC2_PUBLIC_IP>:8000/health
+```
+
+### Query the API
+
+```bash
+# Test query
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Are dogs allowed in public parks?",
+    "filters": {
+      "locations": [
+        {
+          "state": "ca",
+          "county": ["alameda-county"]
+        }
+      ]
+    },
+    "mode": "hybrid"
+  }'
+```
+
+### Response Format
+
+```json
 {
-  "query": "Are dogs allowed in public parks?",
-  "filters": {
-    "locations": [
-      {
-        "state": "ca",
-        "county": ["alameda-county"]
-      }
-    ]
-  }
+  "response": "Based on the retrieved legal documents...",
+  "chunks": [
+    {
+      "id": "chunk_123",
+      "score": 0.856,
+      "rerank_score": 0.923,
+      "state": "ca",
+      "county": "alameda-county",
+      "chunk_text": "Full legal text...",
+      ...
+    }
+  ],
+  "mode": "hybrid"
 }
-EOF
 ```
 
-2. Run with custom query:
+## Step 9: CLI Mode (Optional - For Testing)
 
 ```bash
-# Update docker-compose.yml command or run directly:
+# Run one-off queries using CLI
 docker run --gpus all \
   --env-file .env \
-  -v $(pwd)/outputs:/app/outputs \
-  -v $(pwd)/queries:/app/queries:ro \
   --rm \
   rag-pipeline:latest \
-  python3 main.py --mode hybrid --json queries/my_query.json
-```
-
-### Interactive Mode
-
-```bash
-# Start container in interactive mode
-docker run --gpus all \
-  --env-file .env \
-  -v $(pwd)/outputs:/app/outputs \
-  -it \
-  --rm \
-  rag-pipeline:latest \
-  /bin/bash
-
-# Inside container, run queries:
-python3 main.py --mode hybrid --query "your query here"
+  python3 main.py --mode hybrid --example
 ```
 
 ## Step 9: Access Output Files

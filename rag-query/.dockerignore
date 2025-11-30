@@ -1,0 +1,47 @@
+# Environment files
+.env
+.env.example
+
+# Output files
+outputs/
+*.csv
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+Documentation/
+*.md
+README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Testing
+tests/
+pytest_cache/
+.coverage
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
