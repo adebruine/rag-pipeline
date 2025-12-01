@@ -1,0 +1,28 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+# project artifacts
+uv.lock
+
+# Local deployment artifacts
+run.py
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+# OS & Editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Cloud deployment artifacts
+streamlit-app.zip

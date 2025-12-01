@@ -4,7 +4,7 @@ A complete end-to-end RAG (Retrieval-Augmented Generation) system for legal docu
 
 ## System Overview
 
-This repository contains three integrated pipelines that work together:
+This repository contains four integrated components that work together:
 
 ```
 ┌─────────────────────┐
@@ -22,6 +22,12 @@ This repository contains three integrated pipelines that work together:
 ┌─────────────────────┐
 │   3. RAG Query API   │  Query → Retrieval → LLM Response
 │      (EC2 GPU)       │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  4. Streamlit App    │  Interactive UI → User Interface
+│  (Elastic Beanstalk) │
 └─────────────────────┘
 ```
 
@@ -78,6 +84,23 @@ Production Flask REST API for querying legal documents using vector search and L
 
 ---
 
+### Component 4: Streamlit App (`streamlit-app/`)
+
+Interactive web-based frontend for the RAG system, providing a user-friendly interface for searching legal ordinances.
+
+**Key Features:**
+- **Multi-State Search:** Query across CA, FL, GA, TX counties
+- **Advanced Filtering:** Legal classifications (penalty, obligation, permission, prohibition) and readability metrics
+- **Interactive Results:** View chunks with metadata, scores, and full text
+- **CSV Export:** Download search results for offline analysis
+- **Real-time Updates:** Sticky search bar with chat-style interface
+
+**Deployment:** AWS Elastic Beanstalk (Python 3.11)
+
+📖 **[Read Full Documentation](streamlit-app/README.md)**
+
+---
+
 ## Quick Start
 
 ### Complete System Setup
@@ -123,6 +146,24 @@ Production Flask REST API for querying legal documents using vector search and L
 
    # Test the API
    curl http://localhost:8000/health
+   ```
+
+4. **Deploy Streamlit Frontend (Streamlit App)**
+   ```bash
+   cd streamlit-app
+   # Set up environment
+   echo 'UNBARRED_API="http://localhost:8000/query"' > .env
+   echo 'UNBARRED_API_KEY=""' >> .env
+
+   # Install dependencies
+   pip install -r requirements.txt
+
+   # Run locally
+   python run.py
+   # or
+   streamlit run app.py
+
+   # Access at http://localhost:8501
    ```
 
 ---
@@ -172,7 +213,21 @@ Production Flask REST API for querying legal documents using vector search and L
        │
        ▼
 ┌──────────────┐
-│ JSON Response│ (Frontend/Streamlit)
+│ JSON Response│ (Port 8000)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────────┐
+│  Streamlit App           │
+│  - Interactive UI        │
+│  - Multi-state search    │
+│  - Advanced filters      │
+│  - CSV export            │
+└──────┬───────────────────┘
+       │
+       ▼
+┌──────────────┐
+│   End User   │
 └──────────────┘
 ```
 
@@ -183,7 +238,8 @@ Production Flask REST API for querying legal documents using vector search and L
 | **Data Engineering** | Python 3.11, PyMuPDF, Tesseract OCR, Pandas, AWS ECS/Fargate |
 | **Embedding** | Pinecone Inference API, LLaMA embeddings, Sparse embeddings, `uv` |
 | **Query API** | Flask, Pinecone, LLaMA 3.1 8B (4-bit), PyTorch, Transformers, Docker |
-| **Infrastructure** | AWS S3, ECR, ECS, EC2 (g4dn.xlarge GPU) |
+| **Streamlit App** | Streamlit, Pandas, Requests, AWS Elastic Beanstalk |
+| **Infrastructure** | AWS S3, ECR, ECS, EC2 (g4dn.xlarge GPU), Elastic Beanstalk |
 
 ---
 
@@ -231,6 +287,14 @@ rag-pipeline/
 │   │   └── PROJECT_SUMMARY.md
 │   └── README.md               # Full documentation
 │
+├── streamlit-app/              # Component 4: Frontend UI
+│   ├── app.py                  # Streamlit application
+│   ├── run.py                  # Local development runner
+│   ├── Procfile                # Elastic Beanstalk process config
+│   ├── requirements.txt        # Python dependencies
+│   ├── pyproject.toml          # uv dependencies (optional)
+│   └── README.md               # Full documentation
+│
 └── README.md                   # This file
 ```
 
@@ -254,6 +318,11 @@ rag-pipeline/
 - AWS EC2 GPU instance (g4dn.xlarge or larger)
 - Pinecone API Key
 - Hugging Face Token
+
+### For Streamlit App
+- Python 3.11+
+- Access to deployed RAG Query API (port 8000)
+- AWS Elastic Beanstalk (for production deployment)
 
 ---
 
@@ -279,6 +348,12 @@ PINECONE_API_KEY=pc_sk_...
 ```env
 PINECONE_API_KEY=pc_sk_...
 HF_TOKEN=hf_...
+```
+
+**Streamlit App:**
+```env
+UNBARRED_API=http://your-ec2-ip:8000/query
+UNBARRED_API_KEY=  # Optional - leave empty
 ```
 
 ---
@@ -355,8 +430,9 @@ HF_TOKEN=hf_...
 - **Data Engineering:** Deploy to AWS ECS with Fargate
 - **Pinecone Embedding:** Run batch jobs locally or on EC2
 - **RAG Query API:** Deploy to EC2 GPU instance with Docker
+- **Streamlit App:** Deploy to AWS Elastic Beanstalk (single-instance Python 3.11)
 
-📖 **Detailed deployment guides available in each pipeline's README**
+📖 **Detailed deployment guides available in each component's README**
 
 ---
 
@@ -366,11 +442,13 @@ HF_TOKEN=hf_...
 - **Data Engineering:** ~100 pages/minute (OCR), ~500 pages/minute (text PDFs)
 - **Embedding:** ~1000 chunks/minute
 - **Query API:** ~2-5 seconds per query (hybrid mode)
+- **Streamlit App:** < 100ms UI response time (API latency dependent)
 
 ### AWS Costs (Estimated Monthly)
 - **ECS Task (data-engineering):** ~$50-100/month (depends on usage)
 - **S3 Storage:** ~$23/TB/month
 - **EC2 g4dn.xlarge (24/7):** ~$380/month
+- **Elastic Beanstalk (single-instance):** ~$15-30/month (t3.small or similar)
 - **Pinecone Serverless:** Varies by usage (see Pinecone pricing)
 
 💡 **Tip:** Stop EC2 instance when not in use to reduce costs
@@ -381,6 +459,7 @@ HF_TOKEN=hf_...
 
 - **ECS Tasks:** CloudWatch Logs (`/ecs/data-engineering`)
 - **Query API:** Docker logs (`docker compose logs -f`)
+- **Streamlit App:** Elastic Beanstalk logs (`/var/log/web.stdout.log`)
 - **Pinecone:** Built-in progress bars and logging
 
 ---
@@ -452,6 +531,7 @@ For detailed documentation:
 - [Data Engineering Guide](data-engineering/README.md)
 - [Pinecone Embedding Guide](pinecone-embedding/README.md)
 - [RAG Query API Guide](rag-query/README.md)
+- [Streamlit App Guide](streamlit-app/README.md)
 - [EC2 Deployment Guide](rag-query/Documentation/EC2_SETUP.md)
 - [Quick Start Guide](rag-query/Documentation/QUICKSTART.md)
 
