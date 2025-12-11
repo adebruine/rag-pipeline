@@ -31,6 +31,25 @@ This repository contains four integrated components that work together:
 └─────────────────────┘
 ```
 
+### Step 0: Municode Web Crawler (`municode-web-crawler/`)
+
+Automated web scraper for downloading county ordinance PDFs from Municode Library, providing the initial data source for the RAG pipeline.
+
+**Key Features:**
+- Selenium-based automated PDF downloads from [Municode Library](https://library.municode.com)
+- State-specific crawling (currently Georgia, easily adaptable to other states)
+- County-level filtering (excludes city-level municipalities)
+- Google Drive integration for storing downloaded PDFs
+- Robust error handling with failed URL tracking
+
+**Deployment:** Google Colab (free tier compatible)
+
+**Output:** PDFs saved to Google Drive → Upload to S3 (`s3://bucket/input/pdfs/`) → Feeds into Pipeline 1
+
+📖 **[Read Full Documentation](municode-web-crawler/README.md)**
+
+---
+
 ### Pipeline 1: Data Engineering (`data-engineering/`)
 
 Extracts text from legal PDF documents stored in S3 and produces chunked Parquet files.
@@ -173,6 +192,14 @@ Interactive web-based frontend for the RAG system, providing a user-friendly int
 ### Data Flow
 
 ```
+┌──────────────────────────┐
+│  Municode Web Crawler    │ (Google Colab)
+│  - Selenium scraping     │
+│  - County detection      │
+│  - PDF downloads         │
+└──────┬───────────────────┘
+       │
+       ▼
 ┌──────────────┐
 │  PDF Files   │ (S3: input/pdfs/)
 └──────┬───────┘
@@ -235,6 +262,7 @@ Interactive web-based frontend for the RAG system, providing a user-friendly int
 
 | Component | Technologies |
 |-----------|-------------|
+| **Web Crawler** | Python 3.10, Selenium, Chrome WebDriver, Google Colab, Google Drive |
 | **Data Engineering** | Python 3.11, PyMuPDF, Tesseract OCR, Pandas, AWS ECS/Fargate |
 | **Embedding** | Pinecone Inference API, LLaMA embeddings, Sparse embeddings, `uv` |
 | **Query API** | Flask, Pinecone, LLaMA 3.1 8B (4-bit), PyTorch, Transformers, Docker |
@@ -247,6 +275,10 @@ Interactive web-based frontend for the RAG system, providing a user-friendly int
 
 ```
 rag-pipeline/
+│
+├── municode-web-crawler/       # Step 0: Web Scraping → PDFs
+│   ├── municode_crawler.ipynb # Selenium scraper notebook
+│   └── README.md               # Full documentation
 │
 ├── data-engineering/           # Pipeline 1: PDF → Parquet
 │   ├── main.py                 # Text extraction script
@@ -528,6 +560,7 @@ python -m pytest tests/  # (if tests exist)
 ## Support
 
 For detailed documentation:
+- [Municode Web Crawler Guide](municode-web-crawler/README.md)
 - [Data Engineering Guide](data-engineering/README.md)
 - [Pinecone Embedding Guide](pinecone-embedding/README.md)
 - [RAG Query API Guide](rag-query/README.md)
