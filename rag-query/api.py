@@ -3,6 +3,7 @@ from pipeline import RAGPipeline
 
 app = Flask(__name__)
 
+hello!
 # Initialize BOTH pipelines ONCE
 print("Initializing RAG Pipelines...")
 baseline_pipeline = RAGPipeline(use_reranking=False)
