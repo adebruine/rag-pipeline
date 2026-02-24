@@ -14,6 +14,10 @@ def print_chunks(retrieved_chunks: List[dict]) -> None:
     Args:
         retrieved_chunks: List of retrieved chunk dictionaries
     """
+    if not retrieved_chunks:
+        print("No chunks retrieved.")
+        return
+
     results = []
     for c in retrieved_chunks:
         result = {}

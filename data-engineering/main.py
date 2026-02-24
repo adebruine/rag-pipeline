@@ -101,6 +101,20 @@ def slugify_filename(name: str) -> str:
 # ------------------------ OCR ------------------------
 
 def ocr_page_to_text(page: fitz.Page, dpi: int = OCR_DPI, lang: str = OCR_LANG) -> str:
+    """Render a PDF page to an image and extract text via Tesseract OCR.
+
+    Used as a fallback when PyMuPDF's native text extraction yields too little
+    content (e.g. scanned pages). The page is rasterized at the given DPI,
+    then passed to Tesseract. Returns an empty string on timeout.
+
+    Args:
+        page: A PyMuPDF page object to OCR.
+        dpi: Resolution for rasterization (higher = better accuracy, slower).
+        lang: Tesseract language code (e.g. 'eng').
+
+    Returns:
+        Extracted text with normalized newlines, or '' on failure.
+    """
     zoom = dpi / 72.0
     mat = fitz.Matrix(zoom, zoom)
     pix = page.get_pixmap(matrix=mat, alpha=False)
@@ -114,6 +128,19 @@ def ocr_page_to_text(page: fitz.Page, dpi: int = OCR_DPI, lang: str = OCR_LANG) 
 # ------------------------ Layout-aware extraction ------------------------
 
 def _collect_items_dict(page: fitz.Page):
+    """Extract all text line items from a page using PyMuPDF's dict mode.
+
+    Iterates over text blocks and their lines, collecting each non-empty line
+    as a dict with its block index, bounding-box coordinates (x, y, x1), and
+    concatenated span text. Non-text blocks (e.g. images) are skipped.
+
+    Args:
+        page: A PyMuPDF page object.
+
+    Returns:
+        List of dicts, each with keys: 'bidx' (block index), 'y' (top y),
+        'x' (left x), 'x1' (right x), 'text' (line text content).
+    """
     d = page.get_text("dict") or {}
     items = []
     for b_idx, b in enumerate(d.get("blocks", [])):
@@ -132,6 +159,21 @@ def _collect_items_dict(page: fitz.Page):
     return items
 
 def _items_to_columns(items: List[dict], page_width: float):
+    """Detect whether a page has a two-column layout and split items accordingly.
+
+    Finds the largest horizontal gap between line centers (the "gutter") after
+    trimming header/footer bands. The gutter must pass several sanity checks:
+    it must be in the central band of the page, wide enough relative to page
+    width, and have enough items on each side.
+
+    Args:
+        items: Line items from _collect_items_dict.
+        page_width: The width of the PDF page in points.
+
+    Returns:
+        Tuple of (left_items, right_items, gutter_x). If no two-column layout
+        is detected, returns (items, [], None).
+    """
     # Need enough signals to even consider a split
     need = max(4, 2 * MIN_BLOCKS_PER_COLUMN)
     if len(items) < need:
@@ -199,6 +241,18 @@ def _items_to_columns(items: List[dict], page_width: float):
 
 
 def _sort_items(items: List[dict]):
+    """Sort line items into reading order (top-to-bottom, left-to-right).
+
+    Groups items into rows based on vertical proximity (within Y_TOL points),
+    sorts each row left-to-right by x-coordinate, then flattens into a single
+    ordered list.
+
+    Args:
+        items: Line items from _collect_items_dict or _items_to_columns.
+
+    Returns:
+        List of items reordered into natural reading sequence.
+    """
     if not items:
         return []
     items = sorted(items, key=lambda it: it["y"])
@@ -219,6 +273,19 @@ def _sort_items(items: List[dict]):
     return [it for row in rows for it in row]
 
 def page_text_layout(page: fitz.Page) -> str:
+    """Extract text from a PDF page with layout-aware reading order.
+
+    Handles both single-column and two-column layouts. For two-column pages,
+    text is read left column first (top to bottom), then right column, with
+    columns separated by a blank line. For single-column pages, items are
+    sorted in standard reading order.
+
+    Args:
+        page: A PyMuPDF page object.
+
+    Returns:
+        The full page text as a single string in reading order.
+    """
     items = _collect_items_dict(page)
     if not items:
         return ""
@@ -240,6 +307,19 @@ _BARE_ENUM_RE = re.compile(
 )
 
 def remove_orphan_enumerators(text: str) -> str:
+    """Remove standalone enumerator lines that are artifacts of column splitting.
+
+    PDF extraction can produce bare enumerator lines (e.g. "A.", "(3)", "iv.")
+    that were separated from their content by the layout parser. This function
+    drops enumerator-only lines when the next non-empty line is also a bare
+    enumerator, indicating a sequence of orphaned labels rather than a real list.
+
+    Args:
+        text: Raw extracted page text.
+
+    Returns:
+        Cleaned text with orphan enumerator lines removed.
+    """
     lines = str(text or "").splitlines()
     out, i, n = [], 0, len(lines)
 
@@ -277,6 +357,24 @@ def extract_pdf_to_records(pdf_path: Path,
                            zone: Optional[str],
                            state: Optional[str],
                            county: Optional[str]) -> List[Dict]:
+    """Extract text from every page of a PDF and return one record per page.
+
+    For each page, attempts layout-aware text extraction first. Falls back to
+    OCR if the extracted text is shorter than MIN_TEXT_LEN and the page has
+    very few text blocks (likely a scanned image). Optionally cleans orphan
+    enumerators. Each record includes the text, metadata, and a content hash.
+
+    Args:
+        pdf_path: Path to the PDF file on disk.
+        env: Environment label (e.g. 'prod') written into each record.
+        zone: Zone label (e.g. 'text') written into each record.
+        state: State metadata for this document.
+        county: County metadata for this document.
+
+    Returns:
+        List of dicts, one per page, with keys: doc_id, source_name, page,
+        text, is_ocr, char_len, sha256, extracted_at, env, zone, state, county.
+    """
     source_name = pdf_path.name
     doc_id = hashlib.sha1(str(pdf_path).encode("utf-8")).hexdigest()[:20]
     ts = now_iso()
@@ -329,6 +427,16 @@ def extract_pdf_to_records(pdf_path: Path,
 # ------------------------ Parquet write ------------------------
 
 def write_parquet(records: List[Dict], out_path: str):
+    """Write a list of page records to a Parquet file, locally or on S3.
+
+    Converts records to a Pandas DataFrame, casts partition columns to string
+    type, then writes via PyArrow. For S3 paths, uses pyarrow.fs.S3FileSystem
+    with credentials from environment variables.
+
+    Args:
+        records: List of page record dicts from extract_pdf_to_records.
+        out_path: Destination path — either a local file path or an s3:// URI.
+    """
     if not records:
         print(f"[warn] No records to write for {out_path}")
         return
@@ -360,6 +468,17 @@ def write_parquet(records: List[Dict], out_path: str):
 # ------------------------ S3 helpers ------------------------
 
 def discover_local_pdfs(input_path: Path) -> List[Path]:
+    """Find PDF files from a local path.
+
+    If the path is a single PDF file, returns it in a list. If it's a
+    directory, recursively globs for all .pdf files and returns them sorted.
+
+    Args:
+        input_path: A local file or directory path.
+
+    Returns:
+        Sorted list of Path objects pointing to PDF files.
+    """
     if input_path.is_file() and input_path.suffix.lower() == ".pdf":
         return [input_path]
     if input_path.is_dir():
@@ -367,6 +486,15 @@ def discover_local_pdfs(input_path: Path) -> List[Path]:
     return []
 
 def list_s3_pdfs(bucket: str, prefix: str) -> List[str]:
+    """List all PDF object keys under an S3 prefix, handling pagination.
+
+    Args:
+        bucket: S3 bucket name.
+        prefix: Key prefix to search under (e.g. 'input/pdfs/').
+
+    Returns:
+        List of S3 keys ending in '.pdf'.
+    """
     s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1")))
     keys = []
     paginator = s3.get_paginator("list_objects_v2")
@@ -378,6 +506,18 @@ def list_s3_pdfs(bucket: str, prefix: str) -> List[str]:
     return keys
 
 def download_s3_object(bucket: str, key: str, local_dir: Path) -> Path:
+    """Download a single S3 object to a local directory.
+
+    The filename is sanitized via slugify_filename to avoid filesystem issues.
+
+    Args:
+        bucket: S3 bucket name.
+        key: Full S3 object key.
+        local_dir: Local directory to download into (created if needed).
+
+    Returns:
+        Path to the downloaded local file.
+    """
     local_dir.mkdir(parents=True, exist_ok=True)
     local_file = local_dir / slugify_filename(os.path.basename(key))
     s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1")))
@@ -428,6 +568,16 @@ def build_out_key_from_input(input_bucket: str, input_key: str, out_base: str) -
 # ------------------------ CLI ------------------------
 
 def main():
+    """CLI entry point: parse args, discover PDFs, extract text, and write Parquet.
+
+    Supports two input modes:
+      - Local: a file or directory of PDFs, output to a local dir or S3.
+      - S3: a single key or prefix of PDFs, output auto-mapped by state/county
+        parsed from the input key path.
+
+    Downloads S3 PDFs to a temp directory, processes each sequentially, and
+    cleans up the temp directory on exit.
+    """
     ap = argparse.ArgumentParser(description="PDF → Parquet (local path OR S3 prefix)")
     ap.add_argument("--input", required=True, help="Local file/folder OR s3://bucket/prefix OR s3://bucket/file.pdf")
     ap.add_argument("--out",   required=True, help="For S3 input, use s3://bucket/env=prod[/]; for local input, a dir or s3 prefix")
