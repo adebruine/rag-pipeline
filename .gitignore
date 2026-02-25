@@ -1,1 +1,26 @@
+**/.env
+data-engineering/temp
+**/__pycache__
+**/.python-version
+**/**.pem
+# Jetbrains:
 .idea/
+
+# Official vscode gitignore:
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+!*.code-workspace
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# venv:
+.venv
+
+# Claude
+.claude
+
