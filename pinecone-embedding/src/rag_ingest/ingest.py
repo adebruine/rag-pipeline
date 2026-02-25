@@ -3,11 +3,11 @@ import os
 
 import polars as pl
 
-from rag_ingest.pinecone_setup import init_pinecone
-from rag_ingest.s3_loader import load_parquet_from_s3
-from rag_ingest.embed_dense import embed_dense
-from rag_ingest.embed_sparse import embed_sparse
-from rag_ingest.upsert import build_vectors_from_df, upsert
+from pinecone_setup import init_pinecone
+from s3_loader import load_parquet_from_s3
+from embed_dense import embed_dense
+from embed_sparse import embed_sparse
+from upsert import build_vectors_from_df, upsert
 
 
 def parse_args():
@@ -60,6 +60,7 @@ def main():
         region="us-east-1",
     )
 
+    # TODO: optionally load locally?
     # Load parquet(s) from S3
     df = load_parquet_from_s3(
         bucket=args.bucket,
@@ -68,6 +69,10 @@ def main():
         region="us-east-1",
     )
 
+    # TODO: determine the implications of adding this line
+    # Drop rows where the text column is null or empty
+    df = df.filter(pl.col("text").is_not_null() & (pl.col("text").str.strip_chars().str.len_chars() > 0))
+
     # Logic to determine metadata columns
     if not args.metadata_cols:
         # Use ALL columns (including chunk_text) if none provided
@@ -75,20 +80,22 @@ def main():
     else:
         meta_cols = args.metadata_cols
 
+    # TODO: embed_model should be a constant set somewhere else? maybe
     # Generate dense embeddings
     dense_vecs = embed_dense(
         pc=pc,
         df=df,
-        text_col="chunk_text",
+        text_col="text",
         embed_model="llama-text-embed-v2",
         batch_size=96,
     )
+    # TODO: why was this expecting text_col="chunk_text" ?
 
     # Generate sparse embeddings
     sparse_vecs = embed_sparse(
         pc=pc,
         df=df,
-        text_col="chunk_text",
+        text_col="text",
         embed_model="pinecone-sparse-english-v0",
         batch_size=96,
     )

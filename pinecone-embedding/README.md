@@ -38,7 +38,7 @@ A robust data ingestion pipeline for embedding and indexing pre-chunked legal do
 3. **Set up Environment Variables:**
    Create a `.env` file in the `pinecone-embedding` directory:
    ```bash
-   touch .env
+   cp .env.example  .env
    ```
    Add your Pinecone API Key:
    ```env
