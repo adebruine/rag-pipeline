@@ -1,6 +1,7 @@
 # Data Engineering Pipeline
 
-A containerized PDF text extraction pipeline that runs on AWS ECS. This service reads PDF files from S3, extracts text using layout-aware parsing and OCR, chunks the content, and outputs Parquet files partitioned by state and county.
+A containerized PDF text extraction pipeline that runs on AWS ECS. This service reads PDF files from S3, extracts text 
+using layout-aware parsing and optical character recognition (OCR), chunks the content, and outputs Parquet files partitioned by state and county.
 
 **Location**: `rag-pipeline/data-engineering/`
 
@@ -35,18 +36,28 @@ This pipeline is **Step 1** in the RAG system:
 
 ### Installation
 
+0. **Start virtual environment**
+    ```bash
+    cd rag-pipeline
+    source .venv/bin/activate
+    ```
 1. **Navigate to the directory:**
    ```bash
-   cd rag-pipeline/data-engineering
+   cd data-engineering
    ```
 
 2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
+    NOTE: Audrey ran into some package version issues that she resolved manually, and may have also needed to run `brew install tesselate`
+
 
 3. **Set up AWS credentials:**
-   Ensure your AWS credentials are configured via `~/.aws/credentials` or environment variables:
+
+   (Skip this step for local development.)
+
+    Ensure your AWS credentials are configured via `~/.aws/credentials` or environment variables:
    ```bash
    export AWS_ACCESS_KEY_ID=your_access_key
    export AWS_SECRET_ACCESS_KEY=your_secret_key
@@ -59,9 +70,8 @@ Run the extraction pipeline locally:
 
 ```bash
 python main.py \
-    --bucket your-s3-bucket \
-    --input-prefix input/pdfs/ \
-    --output-prefix processed/zone=text_chunk/ \
+    --input input/pdfs/ \
+    --output processed/zone=text_chunk/ \
     --state california \
     --county alameda
 ```
@@ -70,13 +80,13 @@ python main.py \
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `--bucket` | Yes | S3 bucket name containing input PDFs and for output Parquet files |
-| `--input-prefix` | Yes | S3 prefix where PDF files are located (e.g., `input/ca/alameda/`) |
-| `--output-prefix` | Yes | S3 prefix for output Parquet files (e.g., `processed/zone=text_chunk/`) |
-| `--state` | Yes | State name for partitioning (e.g., `california`) |
-| `--county` | Yes | County name for partitioning (e.g., `alameda`) |
+ | `--input` | Yes | local `file/folder` OR `s3://bucket/prefix` OR `s3://bucket/file.pdf`
+| `--output` | Yes | S3 prefix for output Parquet files (`s3://bucket/env=prod[/]` (recommended) OR a local dir (for local runs)) |
+ | `--env/--zone/--state/--county` | No | optional metadata (still written into parquet)
 | `--chunk-size` | No | Maximum chunk size in characters (default: 1000) |
 | `--chunk-overlap` | No | Overlap between chunks in characters (default: 200) |
+| `--no-ocr` | No | disable OCR fallback 
+| `--s3-max` | No | limit number of PDFs processed from S3 (0 = no limit)
 
 ## AWS Deployment
 
@@ -238,10 +248,10 @@ s3://your-bucket/processed/zone=text_chunk/state=california/county=alameda/chunk
 
 ```
 data-engineering/
-main.py              # Main entry point and orchestration
-Dockerfile           # Container definition with Tesseract OCR
-requirements.txt     # Python dependencies
-README.md           # This file
+    main.py              # Main entry point and orchestration
+    Dockerfile           # Container definition with Tesseract OCR
+    requirements.txt     # Python dependencies
+    README.md            # This file
 ```
 
 ## How It Works

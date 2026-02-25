@@ -10,7 +10,7 @@ PDF → Parquet extractor (local paths OR S3 prefixes)
 
 Args:
   --input : local file/folder OR s3://bucket/prefix OR s3://bucket/file.pdf
-  --out   : s3://bucket/env=prod[/] (recommended)  OR a local dir (for local runs)
+  --out   : s3://bucket/env=prod[/] (recommended) OR a local dir (for local runs)
   --env/--zone/--state/--county : optional metadata (still written into parquet)
   --no-ocr : disable OCR fallback
   --s3-max : limit number of PDFs processed from S3 (0 = no limit)
@@ -526,6 +526,7 @@ def download_s3_object(bucket: str, key: str, local_dir: Path) -> Path:
 
 # ------------------------ Output mapping for S3 inputs ------------------------
 
+# TODO: change these functions to not be specific to their directory structure and ultimately to also not write to s3
 def parse_state_county_from_key(key: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Parse state=<state> and county=<county> from an S3 key path.
