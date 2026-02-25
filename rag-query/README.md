@@ -80,8 +80,7 @@ Choose Docker for easy, consistent deployment on EC2 or any containerized enviro
 ### Quick Start
 
 ```bash
-# 1. Clone the repository
-git clone <your-repo-url>
+# 1. Navigate to the rag-query directory
 cd <repo-directory>/rag-query
 
 # 2. Set up environment variables
@@ -89,9 +88,11 @@ cp .env.example .env
 # Edit .env and add your PINECONE_API_KEY and HF_TOKEN
 
 # 3. Build the Docker image
+chmod +x ./build.sh
 ./build.sh
 
 # 4. Run the Flask API container
+chmod +x ./run.sh
 ./run.sh
 # or
 docker compose up -d
