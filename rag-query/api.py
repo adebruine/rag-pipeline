@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from pipeline import RAGPipeline
+from config import Config
 
 app = Flask(__name__)
 
@@ -39,7 +40,25 @@ def serialize_chunks(chunks):
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({"status": "healthy", "gpu": "available"})
+    return jsonify({"status": "healthy"})
+
+@app.route('/stats', methods=['GET'])
+def stats():
+    pc = baseline_pipeline.pc
+    s = baseline_pipeline.pinecone_index.describe_index_stats()
+
+    all_indexes = [
+        {"name": idx.name, "dimension": idx.dimension, "metric": idx.metric}
+        for idx in pc.list_indexes()
+    ]
+
+    return jsonify({
+        "current_index": Config.PINECONE_INDEX_NAME,
+        "total_vector_count": s.total_vector_count,
+        "namespaces": {k: v.vector_count for k, v in s.namespaces.items()},
+        "dimension": s.dimension,
+        "all_indexes": all_indexes,
+    })
 
 @app.route('/query', methods=['POST'])
 def query():
