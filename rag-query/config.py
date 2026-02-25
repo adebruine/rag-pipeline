@@ -10,23 +10,18 @@ class Config:
     
     # API Keys - Load from environment variables
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
-    HF_TOKEN: str = os.getenv("HF_TOKEN", "")
-    
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
     # Pinecone Configuration
-    PINECONE_INDEX_NAME: str = "hybrid-search-index"
+    PINECONE_INDEX_NAME: str = "test-index"
     PINECONE_NAMESPACE: str = "__default__"
     VECTOR_DIMENSION: int = 1024
-    
+
     # Model Configuration
-    LLM_MODEL_ID: str = "meta-llama/Llama-3.1-8B-Instruct"
-    EMBEDDING_MODEL_DENSE: str = "llama-text-embed-v2"
+    CLAUDE_MODEL: str = "claude-haiku-4-5-20251001"
+    EMBEDDING_MODEL_DENSE: str = "multilingual-e5-large"
     EMBEDDING_MODEL_SPARSE: str = "pinecone-sparse-english-v0"
     RERANKER_MODEL_ID: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    
-    # Quantization Settings
-    LOAD_IN_4BIT: bool = True
-    BNB_4BIT_USE_DOUBLE_QUANT: bool = True
-    BNB_4BIT_QUANT_TYPE: str = "nf4"
     
     # Retrieval Configuration
     BASELINE_TOP_K: int = 5
@@ -50,8 +45,8 @@ class Config:
         """Validate that required configuration is set."""
         if not cls.PINECONE_API_KEY:
             raise ValueError("PINECONE_API_KEY environment variable is not set")
-        if not cls.HF_TOKEN:
-            raise ValueError("HF_TOKEN environment variable is not set")
+        if not cls.ANTHROPIC_API_KEY:
+            raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
     
     @classmethod
     def get_output_path(cls, filename: str) -> str:

@@ -7,22 +7,12 @@ services:
       dockerfile: Dockerfile
     container_name: rag-pipeline
     
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - driver: nvidia
-#              count: 1
-#              capabilities: [gpu]
-    
     env_file:
       - .env
-    
+
     volumes:
       - ./outputs:/app/outputs
       - ./queries:/app/queries:ro
-#      - /home/ubuntu/model_cache:/root/:cache
-      - ~/model_cache:/root/.cache
 
     # CHANGED: Expose port for API
     ports:

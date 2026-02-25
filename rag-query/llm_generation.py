@@ -1,7 +1,7 @@
 """
 LLM generation utilities for RAG pipeline.
 """
-import torch
+import anthropic
 from typing import List, Dict, Any, Optional
 
 from config import Config
@@ -10,11 +10,11 @@ from config import Config
 def build_context_string(retrieved_chunks: List[dict], max_chunks: Optional[int] = None) -> str:
     """
     Send only useful metadata to the LLM.
-    
+
     Args:
         retrieved_chunks: List of retrieved chunk dictionaries
         max_chunks: Maximum number of chunks to include (for filter-only search)
-        
+
     Returns:
         Formatted context string for LLM
     """
@@ -45,7 +45,6 @@ def build_context_string(retrieved_chunks: List[dict], max_chunks: Optional[int]
         if metadata.get('prohibition') == 'Y':
             tags.append("Prohibition")
 
-        # --- Build the new, enriched context string ---
         context_string += f"[Chunk {i+1}]\n"
         context_string += f"Score: {score:.4f}\n"
         context_string += f"State: {state}\n"
@@ -60,16 +59,14 @@ def build_context_string(retrieved_chunks: List[dict], max_chunks: Optional[int]
     return context_string
 
 
-def generate_llm_response(query_text: str, context_string: str, tokenizer: Any, model: Any) -> str:
+def generate_llm_response(query_text: str, context_string: str) -> str:
     """
     Generate LLM response for standard search queries.
-    
+
     Args:
         query_text: User's query
         context_string: Context from retrieved chunks
-        tokenizer: LLM tokenizer
-        model: LLM model
-        
+
     Returns:
         Generated response text
     """
@@ -101,57 +98,30 @@ def generate_llm_response(query_text: str, context_string: str, tokenizer: Any, 
     {context_string}
   """
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ]
-
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        return_tensors="pt"
-    ).to(model.device)
-
-    terminators = [
-        tokenizer.eos_token_id,
-        tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    ]
-
-    attention_mask = torch.ones_like(input_ids).to(model.device)
-    pad_token_id = tokenizer.eos_token_id
-
-    outputs = model.generate(
-        input_ids,
-        attention_mask=attention_mask,
-        pad_token_id=pad_token_id,
-        max_new_tokens=Config.MAX_NEW_TOKENS,
-        eos_token_id=terminators,
-        do_sample=Config.DO_SAMPLE
+    client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model=Config.CLAUDE_MODEL,
+        max_tokens=Config.MAX_NEW_TOKENS,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
     )
 
-    response = outputs[0][input_ids.shape[-1]:]
-    response_text = tokenizer.decode(response, skip_special_tokens=True)
-
-    return response_text
+    return message.content[0].text
 
 
 def generate_llm_response_filter_only_search(
-    query_text: str, 
-    context_string: str, 
-    tokenizer: Any, 
-    model: Any, 
+    query_text: str,
+    context_string: str,
     num_total_chunks: int
 ) -> str:
     """
     Generate LLM response for filter-only searches.
-    
+
     Args:
         query_text: User's query (empty for filter-only)
         context_string: Context from retrieved chunks sample
-        tokenizer: LLM tokenizer
-        model: LLM model
         num_total_chunks: Total number of chunks retrieved
-        
+
     Returns:
         Generated response text with summary
     """
@@ -171,42 +141,19 @@ def generate_llm_response_filter_only_search(
     {context_string}
   """
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ]
-
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        return_tensors="pt"
-    ).to(model.device)
-
-    terminators = [
-        tokenizer.eos_token_id,
-        tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    ]
-
-    attention_mask = torch.ones_like(input_ids).to(model.device)
-    pad_token_id = tokenizer.eos_token_id
-
-    outputs = model.generate(
-        input_ids,
-        attention_mask=attention_mask,
-        pad_token_id=pad_token_id,
-        max_new_tokens=Config.MAX_NEW_TOKENS,
-        eos_token_id=terminators,
-        do_sample=Config.DO_SAMPLE
+    client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model=Config.CLAUDE_MODEL,
+        max_tokens=Config.MAX_NEW_TOKENS,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
     )
 
-    response = outputs[0][input_ids.shape[-1]:]
-    response_text = tokenizer.decode(response, skip_special_tokens=True)
+    response_text = message.content[0].text
 
-    llm_output = (
+    return (
         f"Found {num_total_chunks} laws matching your filters. "
         f"A full list is available in the generated CSV file.\n\n"
         f"Here is a quick summary of the first 10 results:\n\n"
         f"{response_text}"
     )
-
-    return llm_output

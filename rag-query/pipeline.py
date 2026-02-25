@@ -4,7 +4,7 @@ Main RAG pipeline orchestration.
 from typing import Dict, Any, Tuple, Optional
 
 from config import Config
-from models import initialize_llm, initialize_reranker
+from models import initialize_reranker
 from retrieval import (
     initialize_pinecone,
     run_query_for_each_location,
@@ -40,12 +40,6 @@ class RAGPipeline:
         
         # Initialize Pinecone
         self.pc, self.pinecone_index = initialize_pinecone()
-        
-        # Initialize models
-        print("\n" + "="*50)
-        print("Initializing Models...")
-        print("="*50)
-        self.tokenizer, self.model = initialize_llm()
         
         if use_reranking:
             self.reranker_model = initialize_reranker()
@@ -99,13 +93,13 @@ class RAGPipeline:
             context_string = build_context_string(retrieved_chunks)
             # csv_filename = Config.BASELINE_CSV_FILENAME
             # generate_csv(csv_filename, retrieved_chunks)
-            llm_output = generate_llm_response(query, context_string, self.tokenizer, self.model)
+            llm_output = generate_llm_response(query, context_string)
         else:  # Filter-only search
             context_string = build_context_string(retrieved_chunks, 10)
             # csv_filename = Config.BASELINE_FILTER_CSV_FILENAME
             # generate_csv(csv_filename, retrieved_chunks)
             llm_output = generate_llm_response_filter_only_search(
-                query, context_string, self.tokenizer, self.model, len(retrieved_chunks)
+                query, context_string, len(retrieved_chunks)
             )
         
         print("\n--- FINAL LLM OUTPUT ---")
@@ -160,13 +154,13 @@ class RAGPipeline:
             context_string = build_context_string(retrieved_chunks)
             # csv_filename = Config.HYBRID_CSV_FILENAME
             # generate_csv_reranking(csv_filename, retrieved_chunks)
-            llm_output = generate_llm_response(query, context_string, self.tokenizer, self.model)
+            llm_output = generate_llm_response(query, context_string)
         else:  # Filter-only search
             context_string = build_context_string(retrieved_chunks, 10)
             # csv_filename = Config.HYBRID_FILTER_CSV_FILENAME
             # generate_csv_reranking(csv_filename, retrieved_chunks)
             llm_output = generate_llm_response_filter_only_search(
-                query, context_string, self.tokenizer, self.model, len(retrieved_chunks)
+                query, context_string, len(retrieved_chunks)
             )
         
         print("\n--- FINAL LLM OUTPUT ---")
