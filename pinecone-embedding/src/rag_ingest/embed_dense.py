@@ -1,13 +1,16 @@
+import time
 from typing import List
 import polars as pl
 from tqdm import tqdm
+from pinecone.exceptions.exceptions import PineconeApiException
 
 def embed_dense(
     pc,
     df: pl.DataFrame,
-    text_col:str = "chunk_text",
-    embed_model: str = "llama-text-embed-v2",
-    batch_size: int = 96
+    text_col:str = "text",
+    embed_model: str = "multilingual-e5-large",
+    batch_size: int = 48,
+    requests_per_minute: int = 2
 ) -> List[List[float]]:
 
     """Embed dense text data using Pinecone.
@@ -18,34 +21,54 @@ def embed_dense(
         text_col: Name of the column containing text data
         embed_model: Name of the Pinecone embed model to use
         batch_size: Batch size for embedding
+        requests_per_minute: Max requests per minute to stay under rate limit
 
     Returns:
         List of lists of floats representing the embeddings
     """
 
     all_chunks = df[text_col].to_list()
+    print(f"Embedding {len(all_chunks)} chunks...")
     dense_embeddings = []
+    delay_between_requests = 60.0 / requests_per_minute
+
+    # print("Waiting 60s before first request to clear any previous quota usage...")
+    # time.sleep(60)
 
     # WRAP range() with tqdm
     # total=len(all_chunks) allows tqdm to estimate time remaining
     # step=batch_size ensures the bar updates correctly
     for i in tqdm(range(0, len(all_chunks), batch_size), desc="Dense Embedding"):
         chunk_batch = all_chunks[i:i+batch_size]
+        print(f"Embedding batch {i//batch_size+1} of {len(all_chunks)//batch_size+1}")
+        print(f"Batch size: {len(chunk_batch)}")
+        max_retries = 5
+        retry_delay = 60.0  # TPM window is per-minute; start with a full minute
 
-        try:
-            result = pc.inference.embed(
-                model=embed_model,
-                inputs=chunk_batch,
-                parameters={"input_type": "passage", "truncate": "END"},
-            )
-            dense_embeddings.extend([x["values"] for x in result])
+        for attempt in range(max_retries):
+            try:
+                result = pc.inference.embed(
+                    model=embed_model,
+                    inputs=chunk_batch,
+                    parameters={"input_type": "passage", "truncate": "END"},
+                )
+                dense_embeddings.extend([x["values"] for x in result])
+                break
+            except PineconeApiException as e:
+                if e.status == 429 and attempt < max_retries - 1:
+                    print(f"\nRate limit hit (attempt {attempt + 1}/{max_retries}), waiting {retry_delay:.0f}s...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    raise
+            except Exception:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    raise
 
-        except Exception:
-            # single retry batch
-            result = pc.inference.embed(
-                model=embed_model,
-                inputs=chunk_batch,
-                parameters={"input_type": "passage", "truncate": "END"},
-            )
-            dense_embeddings.extend([x["values"] for x in result])
+        # Rate limiting: wait between batches
+        time.sleep(delay_between_requests)
+
     return dense_embeddings

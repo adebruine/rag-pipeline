@@ -87,7 +87,7 @@ def main():
         df=df,
         text_col="text",
         embed_model="llama-text-embed-v2",
-        batch_size=96,
+        batch_size=48,
     )
     # TODO: why was this expecting text_col="chunk_text" ?
 
