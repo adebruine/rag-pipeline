@@ -158,25 +158,31 @@ def run_query_for_each_location(
         pinecone_filter_object = build_pinecone_filter(all_filters)
         response = retrieve_chunks(pc, pinecone_index, query_text, pinecone_filter_object)
         retrieved_chunks.extend(response.get('matches', []))
-    else:  # Otherwise, query for each location.
+    else:
         locations_to_search = all_filters.pop("locations", [])
         base_filters = all_filters
 
-        print(f"\n--- Starting baseline query loop for {len(locations_to_search)} locations ---")
-
-        for loc in locations_to_search:
-            print(f"\nQuerying for location: {loc['state']}, county: {loc['county']}")
-
-            # Build a Pinecone filter object for each location.
-            loop_filter = base_filters.copy()
-            loop_filter['state'] = [loc['state']]
-            loop_filter['county'] = [loc['county']]
-            pinecone_filter_object = build_pinecone_filter(loop_filter)
-
+        if not locations_to_search:  # No location filter — query the whole index.
+            print("\n--- No locations specified. Querying without location filter. ---")
+            pinecone_filter_object = build_pinecone_filter(base_filters)
             response = retrieve_chunks(pc, pinecone_index, query_text, pinecone_filter_object)
             retrieved_chunks.extend(response.get('matches', []))
+        else:
+            print(f"\n--- Starting baseline query loop for {len(locations_to_search)} locations ---")
 
-        print(f"\n--- Loop finished. Total chunks retrieved: {len(retrieved_chunks)} ---")
+            for loc in locations_to_search:
+                print(f"\nQuerying for location: {loc['state']}, county: {loc['county']}")
+
+                # Build a Pinecone filter object for each location.
+                loop_filter = base_filters.copy()
+                loop_filter['state'] = [loc['state']]
+                loop_filter['county'] = [loc['county']]
+                pinecone_filter_object = build_pinecone_filter(loop_filter)
+
+                response = retrieve_chunks(pc, pinecone_index, query_text, pinecone_filter_object)
+                retrieved_chunks.extend(response.get('matches', []))
+
+            print(f"\n--- Loop finished. Total chunks retrieved: {len(retrieved_chunks)} ---")
 
     return retrieved_chunks
 
@@ -212,26 +218,33 @@ def run_query_for_each_location_reranking(
         pinecone_filter_object = build_pinecone_filter(all_filters)
         response = retrieve_chunks_hybrid_reranking(pc, pinecone_index, query_text, pinecone_filter_object)
         retrieved_chunks.extend(response.get('matches', []))
-    else:  # Otherwise, query for each location.
+    else:
         locations_to_search = all_filters.pop("locations", [])
         base_filters = all_filters
 
-        print(f"\n--- Starting Hybrid + Reranking query loop for {len(locations_to_search)} locations ---")
-
-        for loc in locations_to_search:
-            print(f"\nQuerying for location: {loc['state']}, county: {loc['county']}")
-
-            # Build a filter object for each location.
-            loop_filter = base_filters.copy()
-            loop_filter['state'] = [loc['state']]
-            loop_filter['county'] = [loc['county']]
-            pinecone_filter_object = build_pinecone_filter(loop_filter)
-
+        if not locations_to_search:  # No location filter — query the whole index.
+            print("\n--- No locations specified. Querying without location filter. ---")
+            pinecone_filter_object = build_pinecone_filter(base_filters)
             response = retrieve_chunks_hybrid_reranking(pc, pinecone_index, query_text, pinecone_filter_object)
             reranked_chunks = rerank_chunks(reranker_model, query, response.get('matches', []))
             retrieved_chunks.extend(reranked_chunks)
+        else:
+            print(f"\n--- Starting Hybrid + Reranking query loop for {len(locations_to_search)} locations ---")
 
-        print(f"\n--- Loop finished. Total chunks retrieved: {len(retrieved_chunks)} ---")
+            for loc in locations_to_search:
+                print(f"\nQuerying for location: {loc['state']}, county: {loc['county']}")
+
+                # Build a filter object for each location.
+                loop_filter = base_filters.copy()
+                loop_filter['state'] = [loc['state']]
+                loop_filter['county'] = [loc['county']]
+                pinecone_filter_object = build_pinecone_filter(loop_filter)
+
+                response = retrieve_chunks_hybrid_reranking(pc, pinecone_index, query_text, pinecone_filter_object)
+                reranked_chunks = rerank_chunks(reranker_model, query, response.get('matches', []))
+                retrieved_chunks.extend(reranked_chunks)
+
+            print(f"\n--- Loop finished. Total chunks retrieved: {len(retrieved_chunks)} ---")
 
     return retrieved_chunks
 

@@ -30,10 +30,11 @@ def build_context_string(retrieved_chunks: List[dict], max_chunks: Optional[int]
         metadata = match.get('metadata', {})
         score = match.get('score', 0)
 
-        chunk_text = metadata.get('chunk_text', 'N/A')
+        chunk_text = metadata.get('text', 'N/A')
         state = metadata.get('state', 'N/A')
         county = metadata.get('county', 'N/A')
         section = metadata.get('section', 'N/A')
+        print(f"chunk_text: {chunk_text}")
 
         tags = []
         if metadata.get('obligation') == 'Y':
@@ -71,23 +72,14 @@ def generate_llm_response(query_text: str, context_string: str) -> str:
         Generated response text
     """
     system_prompt = """
-    You are a highly intelligent legal analyst. Your goal is to help a user understand the legal information provided.
-    You will be given the user's original question and a list of 'Retrieved Chunks' from a legal database.
+    You are a highly intelligent program evaluation analyst with a scientific background. Your goal is to help a 
+    user understand the scientific research your organization has funded.
+    You will be given the user's original question and a list of 'Retrieved Chunks' from the organization's database.
 
     Your task is to generate a natural language response. You MUST follow these rules:
     1. Base your answer *ONLY* on the information inside the "Retrieved Chunks". Do not use any outside knowledge.
-    2. Use the 'Score, State, County, Section, Tags' fields for quick understanding, but use the full 'Text' field to find the specific answer.
-    3. If the chunks do not contain a clear answer to the user's question, you MUST respond *only* with the text: 'The information was not found in the provided documents.'
-    4. If the chunks *do* contain an answer, summarize it and use the template below to explain the generation process.
-
-    ---
-    TEMPLATE FOR A SUCCESSFUL ANSWER:
-    ### Summary of Findings
-    [Your summary of the answer found in the chunks. Cite the chunks, e.g., "The law prohibits owners from letting their dog disturb the peace [Chunk 1]."]
-
-    ### How This Was Generated
-    To answer your question, this tool performed a search on the UnBarred 2.0 legal database. The "Retrieved Chunks" (which are provided in your CSV file) represent the top 10 most relevant sections of the law found by our search. This summary is based *only* on the information in those chunks. You can review the full text of each chunk in the CSV to verify the information for yourself.
-    ---
+    Do your best to answer the question based solely on the information provided. Let the user know if you need further
+    information to provide a better answer.
   """
 
     user_prompt = f"""

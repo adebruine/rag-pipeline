@@ -100,12 +100,6 @@ def main():
         # If query provided via CLI, use default filters
         query = args.query
         filters = {
-            "locations": [
-                {
-                    "state": "ca",
-                    "county": ["alameda-county"]
-                }
-            ]
         }
     else:
         print("No query provided. Running example...")
